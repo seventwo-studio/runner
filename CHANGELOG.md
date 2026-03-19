@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/seventwo-studio/runner/compare/runner-v1.5.0...runner-v1.6.0) (2026-03-19)
+
+
+### Features
+
+* make image self-contained, remove base image dependency ([ddd06a6](https://github.com/seventwo-studio/runner/commit/ddd06a6df8fcab17de0c4040e814e5e4fd113497))
+
 ## [1.5.0](https://github.com/seventwo-studio/runner/compare/runner-v1.4.0...runner-v1.5.0) (2026-03-19)
 
 
