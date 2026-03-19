@@ -1,4 +1,7 @@
-FROM ghcr.io/seventwo-studio/base:latest AS build
+# =============================================================================
+# Build stage: compile GitHub Actions runner and Docker tools
+# =============================================================================
+FROM buildpack-deps:bookworm AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -6,8 +9,6 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
 ARG DOCKER_VERSION=29.3.0
 ARG BUILDX_VERSION=0.32.1
 ARG COMPOSE_VERSION=5.1.0
-
-USER root
 
 WORKDIR /actions-runner
 
@@ -39,57 +40,74 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-# Playwright build stage - separate for optimal caching
-FROM ghcr.io/seventwo-studio/base:latest AS playwright
+# =============================================================================
+# Playwright stage: pre-install browsers for fast E2E test startup
+# =============================================================================
+FROM buildpack-deps:bookworm AS playwright
 
 ARG PLAYWRIGHT_VERSION=latest
-ARG USERNAME=zero
 ARG NODE_VERSION=20
 
-USER root
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install mise for runtime management
-# The mise installer runs as the current user (root) and installs to its home directory
 RUN curl https://mise.run | sh && \
     mv $HOME/.local/bin/mise /usr/local/bin/mise
 
-# Switch to zero user and install Node.js via mise
-USER ${USERNAME}
-WORKDIR /home/${USERNAME}
-
-# Configure mise and install Node.js
-RUN bash -c 'mise use -g node@${NODE_VERSION} && \
+# Install Node.js via mise
+RUN mise use -g node@${NODE_VERSION} && \
     eval "$(mise activate bash)" && \
-    mise install'
+    mise install
 
-# Set Playwright cache directory for the user
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/${USERNAME}/.cache/ms-playwright
+# Set Playwright cache directory
+ENV PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers
 
 # Install Playwright temporarily to download browsers, then remove it
-# Projects will install their own Playwright version but use these pre-installed browsers
 RUN bash -c 'eval "$(mise activate bash)" && \
     npm install -g playwright@${PLAYWRIGHT_VERSION} && \
-    mkdir -p /home/${USERNAME}/.cache/ms-playwright && \
+    mkdir -p /tmp/pw-browsers && \
     playwright install chromium firefox webkit && \
     npm uninstall -g playwright'
 
-# Switch back to root for system dependencies
-USER root
 # Install system dependencies for all browsers
-# We need to temporarily reinstall playwright to run install-deps, then remove it again
 RUN bash -c 'eval "$(mise activate bash)" && \
     npm install -g playwright@${PLAYWRIGHT_VERSION} && \
     playwright install-deps && \
     npm uninstall -g playwright'
 
-FROM ghcr.io/seventwo-studio/base:latest AS main
+# =============================================================================
+# Main stage: self-contained runner image
+# =============================================================================
+FROM buildpack-deps:bookworm AS main
 
 ARG USERNAME=zero
 
-USER root
-
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# --- Base image setup (inlined from devcontainers/images/base) ---
+
+RUN apt-get update -y && apt-get install -y apt-utils lsb-release
+
+# Install apt-fast for parallel package downloads
+COPY scripts/base/apt-fast.sh /tmp/apt-fast.sh
+RUN chmod +x /tmp/apt-fast.sh && /tmp/apt-fast.sh && rm /tmp/apt-fast.sh
+
+# Install base system packages
+RUN apt-get install -y sudo jq sed ripgrep fd-find tree && \
+    apt-get upgrade -y
+
+# Create zero user (base devcontainer user)
+COPY scripts/base/setup-user.sh /tmp/setup-user.sh
+RUN chmod +x /tmp/setup-user.sh && /tmp/setup-user.sh ${USERNAME} && rm /tmp/setup-user.sh
+
+# Setup shell configs for zero user
+COPY scripts/base/setup-shell.sh /tmp/setup-shell.sh
+RUN chmod +x /tmp/setup-shell.sh && /tmp/setup-shell.sh ${USERNAME} && rm /tmp/setup-shell.sh
+
+# --- Runner-specific setup ---
+
 ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
@@ -114,7 +132,6 @@ ENV GRADLE_USER_HOME=/home/runner/.cache/gradle
 ENV CP_HOME_DIR=/home/runner/.cache/cocoapods
 
 # Playwright configuration
-# Set the browsers path to a location that's readable by all users
 # Pre-installed browsers will be copied here, and the directory is made writable
 # so projects can install additional browsers if there's a version mismatch
 ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/ms-playwright
@@ -163,17 +180,14 @@ RUN curl -fsSL https://bun.sh/install | bash && \
     chmod +x /usr/local/bin/bun && \
     bun --version
 
-# Copy only Playwright browsers from playwright stage to system-wide location
+# Copy Playwright browsers from playwright stage to system-wide location
 # This makes them available to all users (runner, zero, root)
-# Projects will install their own Playwright version and use these pre-installed browsers
-# Directory is made world-writable so projects can install additional browsers if needed
 RUN mkdir -p /usr/local/share/ms-playwright
-COPY --from=playwright /home/${USERNAME}/.cache/ms-playwright /usr/local/share/ms-playwright
+COPY --from=playwright /tmp/pw-browsers /usr/local/share/ms-playwright
 RUN chmod -R 777 /usr/local/share/ms-playwright
 
 # Install Playwright system dependencies
 # We temporarily install playwright just to run install-deps, then remove it
-# The browsers are already copied above and will be reused
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update -y && \
@@ -274,6 +288,9 @@ RUN echo '#!/bin/bash' > /usr/local/bin/runner-entrypoint && \
     echo '# Execute the command or run the runner' >> /usr/local/bin/runner-entrypoint && \
     echo 'exec "$@"' >> /usr/local/bin/runner-entrypoint && \
     chmod +x /usr/local/bin/runner-entrypoint
+
+# Cleanup
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 
 USER runner
 
