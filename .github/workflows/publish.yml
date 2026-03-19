@@ -94,14 +94,22 @@ jobs:
       - name: Pull runner image
         run: docker pull ghcr.io/seventwo-studio/runner:latest
 
-      - name: Run integration tests
+      - name: Run toolchain tests
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}/.github/test-fixtures/runner:/workspace \
+            -v ${{ github.workspace }}/.github/test-fixtures/toolchain:/workspace \
+            -w /workspace \
+            ghcr.io/seventwo-studio/runner:latest \
+            bash ./test.sh
+
+      - name: Run Playwright tests
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/.github/test-fixtures/playwright:/workspace \
             -w /workspace \
             -e CI=true \
             ghcr.io/seventwo-studio/runner:latest \
-            bash -c "chmod +x ./test-runner.sh && ./test-runner.sh"
+            bash ./test.sh
 
   test-expo:
     name: Test Docker Image (Expo + Maestro)
