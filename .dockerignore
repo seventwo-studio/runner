@@ -1,0 +1,39 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+*.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log
+*.tmp
+*.temp
+
+# Test files (allow tests/ for Docker testing)
+test/
+*_test.go
+*_test.py
+*.test.js
+
+# Docker files we don't need in context
+docker-compose*.yml
+.dockerignore

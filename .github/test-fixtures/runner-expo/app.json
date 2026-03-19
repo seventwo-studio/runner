@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "runner-expo-test",
+    "slug": "runner-expo-test",
+    "version": "1.0.0",
+    "scheme": "runner-expo-test",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}
