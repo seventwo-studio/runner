@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/seventwo-studio/runner/compare/runner-v1.6.0...runner-v1.7.0) (2026-03-19)
+
+
+### Features
+
+* add macOS runner provisioning scripts ([0bce048](https://github.com/seventwo-studio/runner/commit/0bce048d169e4acce0f8dd246223edc1f47683a6))
+* add PR test fixtures and fix mise trust config ([d982501](https://github.com/seventwo-studio/runner/commit/d98250131bbcb9c884acbbdfbefc93462bbe29a0))
+* PR test fixtures, Dockerfile fixes, and macOS runner ([c7bd725](https://github.com/seventwo-studio/runner/commit/c7bd7256e94b46519a74de59f7645517bc35d968))
+
 ## [1.6.0](https://github.com/seventwo-studio/runner/compare/runner-v1.5.0...runner-v1.6.0) (2026-03-19)
 
 
