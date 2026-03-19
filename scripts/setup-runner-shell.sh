@@ -32,7 +32,6 @@ fi
 # mise-en-place integration
 export BUN_INSTALL="${HOME}/.bun"
 export PATH="${HOME}/.local/share/mise/shims:${HOME}/.local/bin:${HOME}/.bun/bin:${PATH}"
-export MISE_AUTO_TRUST="true"
 # Auto-initialize mise on first use
 if [ ! -f "${HOME}/.local/share/mise/.initialized" ] && [ -x /usr/local/bin/mise-init ]; then
     /usr/local/bin/mise-init
@@ -75,7 +74,6 @@ SAVEHIST=1000
 # mise-en-place integration
 export BUN_INSTALL="${HOME}/.bun"
 export PATH="${HOME}/.local/share/mise/shims:${HOME}/.local/bin:${HOME}/.bun/bin:${PATH}"
-export MISE_AUTO_TRUST="true"
 # Auto-initialize mise on first use
 if [ ! -f "${HOME}/.local/share/mise/.initialized" ] && [ -x /usr/local/bin/mise-init ]; then
     /usr/local/bin/mise-init

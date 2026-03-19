@@ -1,5 +1,5 @@
 {
-  "name": "runner-test",
+  "name": "playwright-fixture",
   "version": "1.0.0",
   "private": true,
   "scripts": {

@@ -1,71 +1,111 @@
 ---
-name: Test Pull Request
+name: Validate Pull Request
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   validate:
     name: Validate Structure
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - run: test -f Dockerfile
+      - run: test -f version.txt
 
-      - name: Validate Dockerfile exists
-        run: test -f Dockerfile
-
-      - name: Validate version.txt exists
-        run: test -f version.txt
-
-  test-build:
-    name: Test Build
-    runs-on: ubuntu-latest
+  build:
+    name: Build Image
+    if: github.event.pull_request.draft == false
     needs: [validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+      - uses: actions/checkout@v6
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
-      - name: Test build image
-        timeout-minutes: 15
+      - name: Build image
         uses: docker/build-push-action@v7
         with:
           context: .
           push: false
           platforms: linux/amd64
-          tags: test-runner:test
+          tags: runner:test
           outputs: type=docker,dest=/tmp/runner-image.tar
 
-      - name: Test run image
-        timeout-minutes: 15
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-image
+          path: /tmp/runner-image.tar
+          retention-days: 1
+
+  test-toolchain:
+    name: Test Toolchain
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download image
+        uses: actions/download-artifact@v4
+        with:
+          name: runner-image
+          path: /tmp
+
+      - name: Load image
+        run: docker load -i /tmp/runner-image.tar
+
+      - name: Run toolchain tests
         run: |
-          echo "Testing runner image..."
+          docker run --rm \
+            -v ${{ github.workspace }}/.github/test-fixtures/toolchain:/workspace \
+            -w /workspace \
+            runner:test \
+            bash ./test.sh
 
-          timeout 300 docker load -i /tmp/runner-image.tar || {
-            echo "ERROR: Docker load timed out after 5 minutes"
-            exit 1
-          }
+  test-playwright:
+    name: Test Playwright
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
 
-          echo "Loaded images:"
-          timeout 30 docker images --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || echo "Docker images command timed out"
+      - name: Download image
+        uses: actions/download-artifact@v4
+        with:
+          name: runner-image
+          path: /tmp
 
-          IMAGE_NAME=$(timeout 30 docker images --format "{{.Repository}}:{{.Tag}}" | grep test-runner | head -1)
-          echo "Using image: $IMAGE_NAME"
+      - name: Load image
+        run: docker load -i /tmp/runner-image.tar
 
-          if [ -z "$IMAGE_NAME" ]; then
-            echo "ERROR: Could not find expected image test-runner:test"
-            exit 1
-          fi
-
-          timeout 60 docker run --rm "$IMAGE_NAME" echo "Image runs successfully" || {
-            echo "ERROR: Basic docker run test timed out or failed"
-            exit 1
-          }
+      - name: Run Playwright tests
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/.github/test-fixtures/playwright:/workspace \
+            -w /workspace \
+            -e CI=true \
+            runner:test \
+            bash ./test.sh

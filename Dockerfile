@@ -55,9 +55,9 @@ RUN curl https://mise.run | sh && \
     mv $HOME/.local/bin/mise /usr/local/bin/mise
 
 # Install Node.js via mise
-RUN mise use -g node@${NODE_VERSION} && \
+RUN bash -c 'mise use -g node@${NODE_VERSION} && \
     eval "$(mise activate bash)" && \
-    mise install
+    mise install'
 
 # Set Playwright cache directory
 ENV PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers
@@ -258,6 +258,9 @@ USER runner
 ENV HOME=/home/runner
 # Set PATH to include mise shims and local bin for non-interactive shells (like GitHub Actions)
 ENV PATH=/opt/maestro/bin:/home/runner/.local/share/mise/shims:/home/runner/.local/bin:/home/runner/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Trust all config paths so mise.toml files work without manual `mise trust`
+RUN mise settings set trusted_config_paths "/"
 
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
