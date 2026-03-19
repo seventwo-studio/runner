@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/seventwo-studio/runner/compare/runner-v1.4.0...runner-v1.5.0) (2026-03-19)
+
+
+### Features
+
+* extract runner image from devcontainers monorepo ([052e26b](https://github.com/seventwo-studio/runner/commit/052e26bffddd5fd0ad7d79d069fee496985199ac))
+
 ## [1.3.0](https://github.com/seventwo-studio/devcontainers/compare/runner-v1.2.0...runner-v1.3.0) (2026-03-17)
 
 
