@@ -32,6 +32,13 @@ cp -a "${NODE_DIR}/." "$DEST/"
 touch "${DEST}/.complete"
 echo "  Cached at: ${DEST}"
 
+# Install node-gyp globally so native module compilation works as a fallback
+# when prebuilt binaries are not available (e.g. newer Node versions).
+# Uses #!/usr/bin/env node shebang, so it works with any Node version at runtime.
+echo "Installing node-gyp globally..."
+"${NODE_DIR}/bin/npm" install -g --prefix /usr/local node-gyp
+echo "  node-gyp installed at: /usr/local/bin/node-gyp"
+
 mise uninstall "node@${NODE_VERSION}"
 
 # --- Pre-seed Python 3.12 ---

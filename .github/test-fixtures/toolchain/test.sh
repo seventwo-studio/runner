@@ -37,7 +37,7 @@ check_file() {
 
 # ── Core CLI tools ──────────────────────────────────────────────────
 section "Core CLI tools"
-for cmd in git curl wget jq yq make gcc g++ cmake bun mise gh java docker maestro; do
+for cmd in git curl wget jq yq make gcc g++ cmake node-gyp bun mise gh java docker maestro; do
   check_cmd "$cmd"
 done
 
