@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/seventwo-studio/runner/compare/runner-v1.7.0...runner-v1.7.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* install node-gyp globally for native module compilation ([#7](https://github.com/seventwo-studio/runner/issues/7)) ([076f83e](https://github.com/seventwo-studio/runner/commit/076f83e3ab7d62e48f41f101878f747bbf79acb9))
+
 ## [1.7.0](https://github.com/seventwo-studio/runner/compare/runner-v1.6.0...runner-v1.7.0) (2026-03-19)
 
 
