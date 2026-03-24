@@ -36,7 +36,7 @@ echo "  Cached at: ${DEST}"
 # when prebuilt binaries are not available (e.g. newer Node versions).
 # Uses #!/usr/bin/env node shebang, so it works with any Node version at runtime.
 echo "Installing node-gyp globally..."
-"${NODE_DIR}/bin/npm" install -g --prefix /usr/local node-gyp
+PATH="${NODE_DIR}/bin:${PATH}" "${NODE_DIR}/bin/npm" install -g --prefix /usr/local node-gyp
 echo "  node-gyp installed at: /usr/local/bin/node-gyp"
 
 mise uninstall "node@${NODE_VERSION}"
