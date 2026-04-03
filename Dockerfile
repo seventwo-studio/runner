@@ -269,6 +269,13 @@ COPY --from=build /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/li
 USER root
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
+# Install Kaniko executor for daemonless Docker image builds
+COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/executor /usr/local/bin/kaniko
+COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-gcr /usr/local/bin/docker-credential-gcr
+COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-ecr-login /usr/local/bin/docker-credential-ecr-login
+COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-acr-env /usr/local/bin/docker-credential-acr-env
+COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
+
 # Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
 # This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
 # allowing us to set CUSTOM_ACTIONS_RESULTS_URL environment variable
