@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/seventwo-studio/runner/compare/runner-v1.7.1...runner-v1.8.0) (2026-04-03)
+
+
+### Features
+
+* add Kaniko executor for daemonless Docker image builds ([#10](https://github.com/seventwo-studio/runner/issues/10)) ([62087d5](https://github.com/seventwo-studio/runner/commit/62087d566e757ba99cdd81098b45ac97448541c2))
+
 ## [1.7.1](https://github.com/seventwo-studio/runner/compare/runner-v1.7.0...runner-v1.7.1) (2026-03-24)
 
 
