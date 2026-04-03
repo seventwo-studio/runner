@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/seventwo-studio/runner/compare/runner-v1.8.0...runner-v1.8.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* pin Playwright version to prevent browser mismatch ([#12](https://github.com/seventwo-studio/runner/issues/12)) ([8e58a7a](https://github.com/seventwo-studio/runner/commit/8e58a7a665549f0830e2be66a567a16b2ea8f6bb))
+
 ## [1.8.0](https://github.com/seventwo-studio/runner/compare/runner-v1.7.1...runner-v1.8.0) (2026-04-03)
 
 
