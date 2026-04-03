@@ -1,3 +1,5 @@
+ARG PLAYWRIGHT_VERSION=1.59.1
+
 # =============================================================================
 # Build stage: compile GitHub Actions runner and Docker tools
 # =============================================================================
@@ -45,7 +47,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
 # =============================================================================
 FROM buildpack-deps:bookworm AS playwright
 
-ARG PLAYWRIGHT_VERSION=latest
+ARG PLAYWRIGHT_VERSION
 ARG NODE_VERSION=20
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -188,11 +190,12 @@ RUN chmod -R 777 /usr/local/share/ms-playwright
 
 # Install Playwright system dependencies
 # We temporarily install playwright just to run install-deps, then remove it
+ARG PLAYWRIGHT_VERSION
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update -y && \
     apt-get install -y --no-install-recommends nodejs npm && \
-    npx --yes playwright@latest install-deps && \
+    npx --yes playwright@${PLAYWRIGHT_VERSION} install-deps && \
     apt-get remove -y nodejs npm && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
