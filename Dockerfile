@@ -281,8 +281,8 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certifica
 
 # Install crane for registry operations (inspect, copy, retag without a daemon)
 ARG CRANE_VERSION=0.21.5
-RUN export CRANE_ARCH=${TARGETARCH} \
-    && if [ "$CRANE_ARCH" = "amd64" ]; then export CRANE_ARCH=x86_64 ; fi \
+RUN CRANE_ARCH="$(dpkg --print-architecture)" \
+    && if [ "$CRANE_ARCH" = "amd64" ]; then CRANE_ARCH=x86_64 ; fi \
     && curl -fsSL "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
     | tar -xzf - -C /usr/local/bin crane
 
