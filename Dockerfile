@@ -281,20 +281,33 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certifica
 
 # Install crane for registry operations (inspect, copy, retag without a daemon)
 ARG CRANE_VERSION=0.21.5
+ARG CRANE_SHA256_AMD64=REPLACE_WITH_GO_CONTAINERREGISTRY_V0_21_5_LINUX_X86_64_SHA256
+ARG CRANE_SHA256_ARM64=REPLACE_WITH_GO_CONTAINERREGISTRY_V0_21_5_LINUX_ARM64_SHA256
 RUN CRANE_ARCH="$(dpkg --print-architecture)" \
-    && if [ "$CRANE_ARCH" = "amd64" ]; then CRANE_ARCH=x86_64 ; fi \
+    && case "$CRANE_ARCH" in \
+        amd64) CRANE_ARCH=x86_64; CRANE_SHA256="${CRANE_SHA256_AMD64}" ;; \
+        arm64) CRANE_ARCH=arm64; CRANE_SHA256="${CRANE_SHA256_ARM64}" ;; \
+        *) echo "Unsupported crane architecture: ${CRANE_ARCH}" >&2; exit 1 ;; \
+    esac \
     && CRANE_TARBALL="go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
     && CRANE_URL="https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}" \
     && TMP_DIR="$(mktemp -d)" \
     && curl -fsSL "${CRANE_URL}/${CRANE_TARBALL}" -o "${TMP_DIR}/${CRANE_TARBALL}" \
-    && curl -fsSL "${CRANE_URL}/checksums.txt" -o "${TMP_DIR}/checksums.txt" \
-    && cd "${TMP_DIR}" && grep "  ${CRANE_TARBALL}$" checksums.txt | sha256sum -c - \
+    && printf '%s  %s\n' "${CRANE_SHA256}" "${TMP_DIR}/${CRANE_TARBALL}" | sha256sum -c - \
     && tar -xzf "${TMP_DIR}/${CRANE_TARBALL}" -C /usr/local/bin crane \
     && rm -rf "${TMP_DIR}"
 
 # Install Buildah for daemonless OCI image builds with full Dockerfile support
+# Include rootless helpers and subordinate ID mappings so the final `runner`
+# user can run `buildah bud` without requiring sudo/root.
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends buildah && \
+    apt-get install -y --no-install-recommends \
+        buildah \
+        uidmap \
+        slirp4netns \
+        fuse-overlayfs && \
+    grep -q '^runner:' /etc/subuid || echo 'runner:100000:65536' >> /etc/subuid && \
+    grep -q '^runner:' /etc/subgid || echo 'runner:100000:65536' >> /etc/subgid && \
     rm -rf /var/lib/apt/lists/*
 
 # Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
