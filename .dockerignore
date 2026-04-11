@@ -37,3 +37,6 @@ test/
 # Docker files we don't need in context
 docker-compose*.yml
 .dockerignore
+
+# Build script
+build.sh
