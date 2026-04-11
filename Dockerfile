@@ -283,8 +283,14 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certifica
 ARG CRANE_VERSION=0.21.5
 RUN CRANE_ARCH="$(dpkg --print-architecture)" \
     && if [ "$CRANE_ARCH" = "amd64" ]; then CRANE_ARCH=x86_64 ; fi \
-    && curl -fsSL "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
-    | tar -xzf - -C /usr/local/bin crane
+    && CRANE_TARBALL="go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
+    && CRANE_URL="https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}" \
+    && TMP_DIR="$(mktemp -d)" \
+    && curl -fsSL "${CRANE_URL}/${CRANE_TARBALL}" -o "${TMP_DIR}/${CRANE_TARBALL}" \
+    && curl -fsSL "${CRANE_URL}/checksums.txt" -o "${TMP_DIR}/checksums.txt" \
+    && grep "  ${CRANE_TARBALL}$" "${TMP_DIR}/checksums.txt" | sha256sum -c - \
+    && tar -xzf "${TMP_DIR}/${CRANE_TARBALL}" -C /usr/local/bin crane \
+    && rm -rf "${TMP_DIR}"
 
 # Install Buildah for daemonless OCI image builds with full Dockerfile support
 RUN apt-get update -y && \
