@@ -288,7 +288,7 @@ RUN CRANE_ARCH="$(dpkg --print-architecture)" \
     && TMP_DIR="$(mktemp -d)" \
     && curl -fsSL "${CRANE_URL}/${CRANE_TARBALL}" -o "${TMP_DIR}/${CRANE_TARBALL}" \
     && curl -fsSL "${CRANE_URL}/checksums.txt" -o "${TMP_DIR}/checksums.txt" \
-    && grep "  ${CRANE_TARBALL}$" "${TMP_DIR}/checksums.txt" | sha256sum -c - \
+    && cd "${TMP_DIR}" && grep "  ${CRANE_TARBALL}$" checksums.txt | sha256sum -c - \
     && tar -xzf "${TMP_DIR}/${CRANE_TARBALL}" -C /usr/local/bin crane \
     && rm -rf "${TMP_DIR}"
 
