@@ -287,7 +287,6 @@ RUN CRANE_ARCH="$(dpkg --print-architecture)" \
     | tar -xzf - -C /usr/local/bin crane
 
 # Install Buildah for daemonless OCI image builds with full Dockerfile support
-ARG BUILDAH_VERSION=1.43.1
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends buildah && \
     rm -rf /var/lib/apt/lists/*
