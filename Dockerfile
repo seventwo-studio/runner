@@ -279,6 +279,19 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-ecr-
 COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-acr-env /usr/local/bin/docker-credential-acr-env
 COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
 
+# Install crane for registry operations (inspect, copy, retag without a daemon)
+ARG CRANE_VERSION=0.21.5
+RUN export CRANE_ARCH=${TARGETARCH} \
+    && if [ "$CRANE_ARCH" = "amd64" ]; then export CRANE_ARCH=x86_64 ; fi \
+    && curl -fsSL "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
+    | tar -xzf - -C /usr/local/bin crane
+
+# Install Buildah for daemonless OCI image builds with full Dockerfile support
+ARG BUILDAH_VERSION=1.43.1
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends buildah && \
+    rm -rf /var/lib/apt/lists/*
+
 # Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
 # This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
 # allowing us to set CUSTOM_ACTIONS_RESULTS_URL environment variable
