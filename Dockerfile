@@ -281,8 +281,8 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certifica
 
 # Install crane for registry operations (inspect, copy, retag without a daemon)
 ARG CRANE_VERSION=0.21.5
-ARG CRANE_SHA256_AMD64=REPLACE_WITH_GO_CONTAINERREGISTRY_V0_21_5_LINUX_X86_64_SHA256
-ARG CRANE_SHA256_ARM64=REPLACE_WITH_GO_CONTAINERREGISTRY_V0_21_5_LINUX_ARM64_SHA256
+ARG CRANE_SHA256_AMD64=9f823ae5ee25803161110f957b5fd4538f714d40cdf25dacb4914fefafd246bf
+ARG CRANE_SHA256_ARM64=3a47c6da5a0ba1ca7a93def41036d8f262a2160799e5d4ca25dba3cfa47dab41
 RUN CRANE_ARCH="$(dpkg --print-architecture)" \
     && case "$CRANE_ARCH" in \
         amd64) CRANE_ARCH=x86_64; CRANE_SHA256="${CRANE_SHA256_AMD64}" ;; \
