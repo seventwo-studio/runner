@@ -279,6 +279,37 @@ COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-ecr-
 COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-acr-env /usr/local/bin/docker-credential-acr-env
 COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
 
+# Install crane for registry operations (inspect, copy, retag without a daemon)
+ARG CRANE_VERSION=0.21.5
+ARG CRANE_SHA256_AMD64=9f823ae5ee25803161110f957b5fd4538f714d40cdf25dacb4914fefafd246bf
+ARG CRANE_SHA256_ARM64=3a47c6da5a0ba1ca7a93def41036d8f262a2160799e5d4ca25dba3cfa47dab41
+RUN CRANE_ARCH="$(dpkg --print-architecture)" \
+    && case "$CRANE_ARCH" in \
+        amd64) CRANE_ARCH=x86_64; CRANE_SHA256="${CRANE_SHA256_AMD64}" ;; \
+        arm64) CRANE_ARCH=arm64; CRANE_SHA256="${CRANE_SHA256_ARM64}" ;; \
+        *) echo "Unsupported crane architecture: ${CRANE_ARCH}" >&2; exit 1 ;; \
+    esac \
+    && CRANE_TARBALL="go-containerregistry_Linux_${CRANE_ARCH}.tar.gz" \
+    && CRANE_URL="https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}" \
+    && TMP_DIR="$(mktemp -d)" \
+    && curl -fsSL "${CRANE_URL}/${CRANE_TARBALL}" -o "${TMP_DIR}/${CRANE_TARBALL}" \
+    && printf '%s  %s\n' "${CRANE_SHA256}" "${TMP_DIR}/${CRANE_TARBALL}" | sha256sum -c - \
+    && tar -xzf "${TMP_DIR}/${CRANE_TARBALL}" -C /usr/local/bin crane \
+    && rm -rf "${TMP_DIR}"
+
+# Install Buildah for daemonless OCI image builds with full Dockerfile support
+# Include rootless helpers and subordinate ID mappings so the final `runner`
+# user can run `buildah bud` without requiring sudo/root.
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        buildah \
+        uidmap \
+        slirp4netns \
+        fuse-overlayfs && \
+    grep -q '^runner:' /etc/subuid || echo 'runner:100000:65536' >> /etc/subuid && \
+    grep -q '^runner:' /etc/subgid || echo 'runner:100000:65536' >> /etc/subgid && \
+    rm -rf /var/lib/apt/lists/*
+
 # Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
 # This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
 # allowing us to set CUSTOM_ACTIONS_RESULTS_URL environment variable
