@@ -37,7 +37,7 @@ check_file() {
 
 # ── Core CLI tools ──────────────────────────────────────────────────
 section "Core CLI tools"
-for cmd in git curl wget jq yq make gcc g++ cmake node-gyp bun mise gh java docker maestro kaniko crane buildah; do
+for cmd in git curl wget jq yq make gcc g++ cmake node-gyp bun mise gh java docker maestro crane buildah; do
   check_cmd "$cmd"
 done
 
@@ -45,10 +45,6 @@ done
 section "Docker plugins"
 if docker buildx version &>/dev/null; then pass "docker buildx"; else fail "docker buildx"; fi
 if docker compose version &>/dev/null; then pass "docker compose"; else fail "docker compose"; fi
-
-# ── Kaniko (daemonless image builds) ────────────────────────────────
-section "Kaniko"
-if kaniko version &>/dev/null; then pass "kaniko version"; else fail "kaniko version"; fi
 
 # ── Crane (registry operations) ────────────────────────────────────
 section "Crane"
