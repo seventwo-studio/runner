@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/seventwo-studio/runner/compare/runner-v1.8.1...runner-v1.9.0) (2026-04-11)
+
+
+### Features
+
+* add Buildah and Crane to runner image ([#14](https://github.com/seventwo-studio/runner/issues/14)) ([51903aa](https://github.com/seventwo-studio/runner/commit/51903aa7e3ffcb1734dafd653c3d5c0f22c45dc3))
+
 ## [1.8.1](https://github.com/seventwo-studio/runner/compare/runner-v1.8.0...runner-v1.8.1) (2026-04-03)
 
 
