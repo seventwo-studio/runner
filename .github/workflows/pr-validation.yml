@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
@@ -24,7 +25,7 @@ jobs:
       - run: test -f version.txt
 
   build:
-    name: Build Image
+    name: Build & Push Image
     if: github.event.pull_request.draft == false
     needs: [validate]
     runs-on: ubuntu-latest
@@ -46,21 +47,81 @@ jobs:
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
 
-      - name: Build image
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sanitize image tag
+        id: tag
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          RAW="pr-${PR_NUMBER}-${HEAD_REF}"
+          SAFE=$(echo "$RAW" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g' | cut -c1-128)
+          echo "tag=$SAFE" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: false
+          push: true
           platforms: linux/amd64
-          tags: runner:test
-          outputs: type=docker,dest=/tmp/runner-image.tar
+          tags: ghcr.io/seventwo-studio/runner:${{ steps.tag.outputs.tag }}
+          cache-from: |
+            type=registry,ref=ghcr.io/seventwo-studio/runner:buildcache
+            type=registry,ref=ghcr.io/seventwo-studio/runner:latest
 
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
+      - name: Comment image reference on PR
+        uses: actions/github-script@v7
         with:
-          name: runner-image
-          path: /tmp/runner-image.tar
-          retention-days: 1
+          script: |
+            const tag = '${{ steps.tag.outputs.tag }}';
+            const image = `ghcr.io/seventwo-studio/runner:${tag}`;
+            const sha = context.sha.slice(0, 7);
+            const now = new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
+            const marker = '<!-- pr-image-comment -->';
+            const body = [
+              marker,
+              `### PR image built \u2705`,
+              '',
+              `**Image:** \`${image}\``,
+              `**Commit:** \`${sha}\``,
+              `**Built:** ${now}`,
+              '',
+              '```sh',
+              `docker pull ${image}`,
+              '```',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+    outputs:
+      image: ghcr.io/seventwo-studio/runner:${{ steps.tag.outputs.tag }}
 
   test-toolchain:
     name: Test Toolchain
@@ -70,21 +131,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Download image
-        uses: actions/download-artifact@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          name: runner-image
-          path: /tmp
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load image
-        run: docker load -i /tmp/runner-image.tar
+      - name: Pull PR image
+        run: docker pull ${{ needs.build.outputs.image }}
 
       - name: Run toolchain tests
+        env:
+          PR_IMAGE: ${{ needs.build.outputs.image }}
         run: |
           docker run --rm \
             -v ${{ github.workspace }}/.github/test-fixtures/toolchain:/workspace \
             -w /workspace \
-            runner:test \
+            "$PR_IMAGE" \
             bash ./test.sh
 
   test-playwright:
@@ -95,20 +159,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Download image
-        uses: actions/download-artifact@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          name: runner-image
-          path: /tmp
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load image
-        run: docker load -i /tmp/runner-image.tar
+      - name: Pull PR image
+        run: docker pull ${{ needs.build.outputs.image }}
 
       - name: Run Playwright tests
+        env:
+          PR_IMAGE: ${{ needs.build.outputs.image }}
         run: |
           docker run --rm \
             -v ${{ github.workspace }}/.github/test-fixtures/playwright:/workspace \
             -w /workspace \
             -e CI=true \
-            runner:test \
+            "$PR_IMAGE" \
             bash ./test.sh
