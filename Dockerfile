@@ -1,5 +1,6 @@
 ARG PLAYWRIGHT_VERSION=1.59.1
 ARG BUILDAH_VERSION=1.39.4
+ARG BUILDAH_COMMIT=5b7b7ca328733fafa9b82810bf919c14cb924549
 
 # =============================================================================
 # Buildah stage: cross-compile buildah with CGO (avoids QEMU GC crashes)
@@ -11,6 +12,7 @@ ARG BUILDAH_VERSION=1.39.4
 FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS buildah-build
 
 ARG BUILDAH_VERSION
+ARG BUILDAH_COMMIT
 ARG TARGETARCH
 ARG BUILDARCH
 
@@ -34,8 +36,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends pkg-config && \
     fi && \
     rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 --branch v${BUILDAH_VERSION} \
-        https://github.com/containers/buildah.git /buildah
+RUN git init /buildah && \
+    cd /buildah && \
+    git remote add origin https://github.com/containers/buildah.git && \
+    git fetch --depth 1 origin refs/tags/v${BUILDAH_VERSION}:refs/tags/v${BUILDAH_VERSION} && \
+    test "$(git rev-list -n 1 refs/tags/v${BUILDAH_VERSION})" = "${BUILDAH_COMMIT}" && \
+    git checkout --detach ${BUILDAH_COMMIT}
 
 WORKDIR /buildah
 RUN if [ "$TARGETARCH" != "$BUILDARCH" ] && [ "$TARGETARCH" = "amd64" ]; then \
@@ -345,6 +351,7 @@ RUN apt-get update -y && \
         libgpgme11 \
         libseccomp2 \
         libdevmapper1.02.1 \
+        libbtrfs0 \ 
         uidmap \
         fuse-overlayfs && \
     rm -rf /var/lib/apt/lists/*
