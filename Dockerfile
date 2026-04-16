@@ -351,7 +351,7 @@ RUN apt-get update -y && \
         libgpgme11 \
         libseccomp2 \
         libdevmapper1.02.1 \
-        libbtrfs0 \ 
+        libbtrfs0 \
         uidmap \
         fuse-overlayfs && \
     rm -rf /var/lib/apt/lists/*
