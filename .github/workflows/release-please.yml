@@ -18,4 +18,8 @@ jobs:
       - name: Release Please
         uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use a fine-grained PAT (contents:write, pull_requests:write) so
+          # release-please's PRs trigger CI. Workflows started by GITHUB_TOKEN
+          # cannot trigger further workflow runs, which would otherwise leave
+          # release PRs without status checks and blocked by branch rules.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
