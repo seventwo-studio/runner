@@ -53,13 +53,13 @@ if crane version &>/dev/null; then pass "crane version"; else fail "crane versio
 # ── Buildah (daemonless OCI builds) ────────────────────────────────
 section "Buildah"
 if buildah --version &>/dev/null; then pass "buildah version"; else fail "buildah version"; fi
-if buildah info &>/dev/null; then pass "buildah info"; else fail "buildah info"; fi
+if sudo buildah info &>/dev/null; then pass "buildah info"; else fail "buildah info"; fi
 
 # Validate a minimal rootless lifecycle to catch missing runtime helpers/config.
 BUILDAH_CTR=""
-if BUILDAH_CTR="$(buildah from scratch 2>/dev/null)"; then
+if BUILDAH_CTR="$(sudo buildah from scratch 2>/dev/null)"; then
   pass "buildah from scratch"
-  if buildah rm "$BUILDAH_CTR" &>/dev/null; then
+  if sudo buildah rm "$BUILDAH_CTR" &>/dev/null; then
     pass "buildah rm"
   else
     fail "buildah rm"

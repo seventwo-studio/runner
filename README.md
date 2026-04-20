@@ -36,6 +36,12 @@ runner:latest
 - **Docker Buildx**: Advanced build capabilities with multi-platform support
 - **Docker Group**: Runner user is added to docker group for container access
 
+### Buildah (Container Image Builds)
+- **Buildah 1.39.4**: Compiled from source with commit pinning for supply chain security
+- **Cross-compiled with CGO**: Builds natively on any host arch (no QEMU), cross-compiles for target
+- **VFS Storage**: System-wide `/etc/containers/storage.conf` configured for VFS (works in unprivileged pods)
+- **Chroot Isolation**: Runs inside Kubernetes pods without mount namespace access
+
 ### Security Features
 - **Sandbox Support**: Can initialize security sandbox if available
 - **Non-root User**: Runs as `runner` user (UID 1001) with sudo access
@@ -45,15 +51,20 @@ runner:latest
 
 ### Base Components
 - All components from the base image
-- GitHub Actions runner (latest version)
-- Docker CLI (v27.1.1)
-- Docker Buildx plugin (v0.16.2)
-- Runner container hooks (v0.7.0)
-- Node.js (v20 LTS)
-- Playwright (latest version)
+- GitHub Actions runner (latest version, auto-detected)
+- Docker CLI (v29.3.0)
+- Docker Buildx plugin (v0.32.1)
+- Docker Compose (v5.1.0)
+- Runner container hooks (v0.8.1)
+- Buildah (v1.39.4, compiled from source)
+- crane (v0.21.5)
+- Node.js (v20 LTS via mise)
+- Playwright (v1.59.1)
 - Bun (latest version)
 - Java 17 JRE (headless)
-- Maestro CLI (v1.39.13)
+- Maestro CLI (v2.3.0)
+- GitHub CLI (gh)
+- yq (v4.52.4)
 
 ### Playwright Browsers
 - Chromium (latest stable)
@@ -255,11 +266,16 @@ services:
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `RUNNER_CONTAINER_HOOKS_VERSION` | `0.7.0` | Container hooks version |
-| `DOCKER_VERSION` | `27.1.1` | Docker CLI version |
-| `BUILDX_VERSION` | `0.16.2` | Docker Buildx version |
-| `NODE_MAJOR` | `20` | Node.js major version |
-| `PLAYWRIGHT_VERSION` | `latest` | Playwright version |
+| `PLAYWRIGHT_VERSION` | `1.59.1` | Playwright version |
+| `BUILDAH_VERSION` | `1.39.4` | Buildah version (compiled from source) |
+| `BUILDAH_COMMIT` | *(pinned)* | Expected commit SHA for tag verification |
+| `RUNNER_CONTAINER_HOOKS_VERSION` | `0.8.1` | Container hooks version |
+| `DOCKER_VERSION` | `29.3.0` | Docker CLI version |
+| `BUILDX_VERSION` | `0.32.1` | Docker Buildx version |
+| `COMPOSE_VERSION` | `5.1.0` | Docker Compose version |
+| `MAESTRO_VERSION` | `2.3.0` | Maestro CLI version |
+| `YQ_VERSION` | `4.52.4` | yq YAML processor version |
+| `CRANE_VERSION` | `0.21.5` | crane registry tool version |
 
 ### Volume Mounts
 
@@ -273,8 +289,14 @@ services:
 
 | Capability | Required For | Description |
 |------------|--------------|-------------|
-| `NET_ADMIN` | Security sandbox | Network filtering |
-| `SYS_ADMIN` | Full Docker support | Container management |
+| `SYS_ADMIN` | Buildah | Mount/unshare within chroot isolation |
+| `SYS_CHROOT` | Buildah | Chroot isolation for RUN steps |
+| `SETUID` | Buildah | UID mapping (newuidmap) |
+| `SETGID` | Buildah | GID mapping (newgidmap) |
+| `CHOWN` | Buildah | File ownership in build layers |
+| `DAC_OVERRIDE` | Buildah | Access files during layer extraction |
+| `FOWNER` | Buildah | Set ownership on extracted files |
+| `NET_ADMIN` | Security sandbox | Network filtering (optional) |
 
 ## GitHub Actions Workflow Examples
 
@@ -466,6 +488,58 @@ docker run -it --ipc=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
   runner:latest
 ```
+
+## Building Container Images with Buildah
+
+The runner includes Buildah 1.39.4 for building OCI container images without a Docker daemon. This is designed for Kubernetes-hosted runners where Docker-in-Docker is not available.
+
+### Required Pod Security Context
+
+```yaml
+securityContext:
+  runAsUser: 1001
+  runAsGroup: 1001
+  allowPrivilegeEscalation: true
+  seccompProfile:
+    type: Unconfined
+  appArmorProfile:
+    type: Unconfined
+  capabilities:
+    drop: [ALL]
+    add: [SYS_ADMIN, SYS_CHROOT, SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
+```
+
+### Workflow Usage
+
+```yaml
+- name: Build container image
+  run: |
+    sudo buildah bud \
+      --isolation chroot \
+      --ulimit nofile=$(ulimit -Hn):$(ulimit -Hn) \
+      --ulimit nproc=$(ulimit -Hu):$(ulimit -Hu) \
+      --cap-drop all \
+      -t myimage:latest \
+      -f ./Dockerfile .
+
+- name: Push to registry
+  run: |
+    echo "${{ secrets.GITHUB_TOKEN }}" | sudo buildah login -u ${{ github.actor }} --password-stdin ghcr.io
+    sudo buildah push myimage:latest ghcr.io/org/myimage:latest
+```
+
+### Flag Explanation
+
+| Flag | Purpose |
+|------|---------|
+| `--isolation chroot` | Uses chroot instead of mount namespaces (blocked in pods) |
+| `--ulimit nofile=...` | Caps file descriptor limit to pod's hard limit (buildah tries to raise it) |
+| `--ulimit nproc=...` | Caps process limit to pod's hard limit |
+| `--cap-drop all` | Prevents buildah from setting capabilities on RUN child processes |
+
+### Storage Configuration
+
+The image ships with `/etc/containers/storage.conf` pre-configured for VFS storage. No workflow-level storage configuration is needed. VFS is slower than overlay (full file copies vs copy-on-write) but works without fuse-overlayfs permissions.
 
 ## Security Considerations
 
