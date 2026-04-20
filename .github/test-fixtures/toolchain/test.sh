@@ -53,11 +53,16 @@ if crane version &>/dev/null; then pass "crane version"; else fail "crane versio
 # ── Buildah (daemonless OCI builds) ────────────────────────────────
 section "Buildah"
 if buildah --version &>/dev/null; then pass "buildah version"; else fail "buildah version"; fi
-if sudo buildah info &>/dev/null; then pass "buildah info"; else fail "buildah info"; fi
+if BUILDAH_OUT="$(sudo buildah info 2>&1)"; then
+  pass "buildah info"
+else
+  fail "buildah info"
+  echo "$BUILDAH_OUT" | sed 's/^/    /'
+fi
 
 # Validate a minimal rootless lifecycle to catch missing runtime helpers/config.
 BUILDAH_CTR=""
-if BUILDAH_CTR="$(sudo buildah from scratch 2>/dev/null)"; then
+if BUILDAH_CTR="$(sudo buildah from scratch 2>/tmp/buildah.err)"; then
   pass "buildah from scratch"
   if sudo buildah rm "$BUILDAH_CTR" &>/dev/null; then
     pass "buildah rm"
@@ -66,6 +71,7 @@ if BUILDAH_CTR="$(sudo buildah from scratch 2>/dev/null)"; then
   fi
 else
   fail "buildah from scratch"
+  sed 's/^/    /' /tmp/buildah.err
 fi
 
 # ── Image processing libraries ──────────────────────────────────────
