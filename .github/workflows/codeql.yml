@@ -1,25 +1,22 @@
 ---
 # Advanced CodeQL setup: analyzes GitHub Actions workflows for security issues.
 #
-# Replaces the previous default setup so that fork PRs (where the default
-# setup skips scanning due to read-only GITHUB_TOKEN) also get analyzed.
+# Replaces the previous default setup so fork PRs get scanned — default
+# setup skips them because it needs a write-scoped GITHUB_TOKEN to upload
+# SARIF, which forks don't get.
 #
-# Security notes for pull_request_target:
-#   - This workflow runs with the BASE branch's workflow definition (not the
-#     PR head's), so forks cannot modify it to exfiltrate secrets.
-#   - We check out the PR head SHA for analysis, but the only steps that
-#     touch that content are CodeQL's init/analyze, which parse YAML —
-#     they do not execute code from the checkout.
-#   - `persist-credentials: false` prevents the GITHUB_TOKEN from being
-#     written to .git/config where a malicious action could read it.
-#   - No `run:` steps shell out into the checked-out tree.
+# Uses `pull_request` (not `pull_request_target`) to avoid the "checkout
+# of untrusted code in trusted context" pattern. On fork PRs the token
+# is read-only; the CodeQL action handles this by reporting results via
+# check annotations. Since this is a public repo, SARIF upload from fork
+# PRs works through GitHub's advanced-security fork-PR mechanism.
 
 name: CodeQL
 
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
   schedule:
@@ -37,7 +34,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze
-    if: github.event_name != 'pull_request_target' || github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -48,7 +45,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Initialize CodeQL
