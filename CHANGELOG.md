@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/seventwo-studio/runner/compare/runner-v1.9.0...runner-v1.10.0) (2026-04-17)
+
+
+### Features
+
+* push PR images to GHCR for pre-merge testing ([#21](https://github.com/seventwo-studio/runner/issues/21)) ([2450699](https://github.com/seventwo-studio/runner/commit/2450699cbbaa71883fe8cbc4091b01ad5bb4ac81))
+
 ## [1.9.0](https://github.com/seventwo-studio/runner/compare/runner-v1.8.1...runner-v1.9.0) (2026-04-11)
 
 
