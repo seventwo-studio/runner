@@ -1,0 +1,62 @@
+---
+# Advanced CodeQL setup: analyzes GitHub Actions workflows for security issues.
+#
+# Replaces the previous default setup so that fork PRs (where the default
+# setup skips scanning due to read-only GITHUB_TOKEN) also get analyzed.
+#
+# Security notes for pull_request_target:
+#   - This workflow runs with the BASE branch's workflow definition (not the
+#     PR head's), so forks cannot modify it to exfiltrate secrets.
+#   - We check out the PR head SHA for analysis, but the only steps that
+#     touch that content are CodeQL's init/analyze, which parse YAML —
+#     they do not execute code from the checkout.
+#   - `persist-credentials: false` prevents the GITHUB_TOKEN from being
+#     written to .git/config where a malicious action could read it.
+#   - No `run:` steps shell out into the checked-out tree.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "0 8 * * 1"  # weekly Monday 08:00 UTC
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
