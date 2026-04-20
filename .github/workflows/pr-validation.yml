@@ -48,7 +48,22 @@ jobs:
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
 
+      # Fork PRs run with a read-only GITHUB_TOKEN, so they can't push to
+      # GHCR or comment on the PR. Detect that up front and branch behavior.
+      - name: Detect fork PR
+        id: fork
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" = "$BASE_REPO" ]; then
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_fork=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Login to GitHub Container Registry
+        if: steps.fork.outputs.is_fork == 'false'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -65,7 +80,8 @@ jobs:
           SAFE=$(echo "$RAW" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g' | cut -c1-128)
           echo "tag=$SAFE" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push image
+      - name: Build and push image (same-repo PR)
+        if: steps.fork.outputs.is_fork == 'false'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -76,7 +92,30 @@ jobs:
             type=registry,ref=ghcr.io/seventwo-studio/runner:buildcache
             type=registry,ref=ghcr.io/seventwo-studio/runner:latest
 
+      - name: Build image to tar (fork PR)
+        if: steps.fork.outputs.is_fork == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          platforms: linux/amd64
+          tags: local/runner:${{ steps.tag.outputs.tag }}
+          outputs: type=docker,dest=/tmp/pr-image.tar
+          cache-from: |
+            type=registry,ref=ghcr.io/seventwo-studio/runner:buildcache
+            type=registry,ref=ghcr.io/seventwo-studio/runner:latest
+
+      - name: Upload image artifact (fork PR)
+        if: steps.fork.outputs.is_fork == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-image
+          path: /tmp/pr-image.tar
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Comment image reference on PR
+        if: steps.fork.outputs.is_fork == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -122,7 +161,8 @@ jobs:
             }
 
     outputs:
-      image: ghcr.io/seventwo-studio/runner:${{ steps.tag.outputs.tag }}
+      is_fork: ${{ steps.fork.outputs.is_fork }}
+      image: ${{ steps.fork.outputs.is_fork == 'true' && format('local/runner:{0}', steps.tag.outputs.tag) || format('ghcr.io/seventwo-studio/runner:{0}', steps.tag.outputs.tag) }}
 
   test-toolchain:
     name: Test Toolchain
@@ -133,14 +173,29 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Login to GitHub Container Registry
+        if: needs.build.outputs.is_fork == 'false'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull PR image
-        run: docker pull ${{ needs.build.outputs.image }}
+      - name: Pull PR image (same-repo PR)
+        if: needs.build.outputs.is_fork == 'false'
+        env:
+          PR_IMAGE: ${{ needs.build.outputs.image }}
+        run: docker pull "$PR_IMAGE"
+
+      - name: Download PR image artifact (fork PR)
+        if: needs.build.outputs.is_fork == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-image
+          path: /tmp
+
+      - name: Load PR image (fork PR)
+        if: needs.build.outputs.is_fork == 'true'
+        run: docker load -i /tmp/pr-image.tar
 
       - name: Run toolchain tests
         env:
@@ -161,14 +216,29 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Login to GitHub Container Registry
+        if: needs.build.outputs.is_fork == 'false'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull PR image
-        run: docker pull ${{ needs.build.outputs.image }}
+      - name: Pull PR image (same-repo PR)
+        if: needs.build.outputs.is_fork == 'false'
+        env:
+          PR_IMAGE: ${{ needs.build.outputs.image }}
+        run: docker pull "$PR_IMAGE"
+
+      - name: Download PR image artifact (fork PR)
+        if: needs.build.outputs.is_fork == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-image
+          path: /tmp
+
+      - name: Load PR image (fork PR)
+        if: needs.build.outputs.is_fork == 'true'
+        run: docker load -i /tmp/pr-image.tar
 
       - name: Run Playwright tests
         env:
