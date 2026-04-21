@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/seventwo-studio/runner/compare/runner-v1.10.0...runner-v1.11.0) (2026-04-21)
+
+
+### Features
+
+* enhance Buildah support for cross-compilation and rootless operation ([#20](https://github.com/seventwo-studio/runner/issues/20)) ([dc44f63](https://github.com/seventwo-studio/runner/commit/dc44f63e5e9c1bc9aa324cce37d7f534bb0568bf))
+
 ## [1.10.0](https://github.com/seventwo-studio/runner/compare/runner-v1.9.0...runner-v1.10.0) (2026-04-17)
 
 
