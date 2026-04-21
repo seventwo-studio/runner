@@ -1,0 +1,58 @@
+---
+# Advanced CodeQL setup: analyzes GitHub Actions workflows for security issues.
+#
+# Replaces the previous default setup so fork PRs get scanned — default
+# setup skips them because it needs a write-scoped GITHUB_TOKEN to upload
+# SARIF, which forks don't get.
+#
+# Uses `pull_request` (not `pull_request_target`) to avoid the "checkout
+# of untrusted code in trusted context" pattern. On fork PRs the token
+# is read-only; the CodeQL action handles this by reporting results via
+# check annotations. Since this is a public repo, SARIF upload from fork
+# PRs works through GitHub's advanced-security fork-PR mechanism.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "0 8 * * 1"  # weekly Monday 08:00 UTC
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
