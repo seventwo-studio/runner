@@ -202,6 +202,7 @@ jobs:
           PR_IMAGE: ${{ needs.build.outputs.image }}
         run: |
           docker run --rm \
+            --privileged \
             -v ${{ github.workspace }}/.github/test-fixtures/toolchain:/workspace \
             -w /workspace \
             "$PR_IMAGE" \

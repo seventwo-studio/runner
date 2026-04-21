@@ -37,7 +37,7 @@ check_file() {
 
 # ── Core CLI tools ──────────────────────────────────────────────────
 section "Core CLI tools"
-for cmd in git curl wget jq yq make gcc g++ cmake node-gyp bun mise gh java docker maestro kaniko crane buildah; do
+for cmd in git curl wget jq yq make gcc g++ cmake node-gyp bun mise gh java docker maestro crane buildah; do
   check_cmd "$cmd"
 done
 
@@ -46,10 +46,6 @@ section "Docker plugins"
 if docker buildx version &>/dev/null; then pass "docker buildx"; else fail "docker buildx"; fi
 if docker compose version &>/dev/null; then pass "docker compose"; else fail "docker compose"; fi
 
-# ── Kaniko (daemonless image builds) ────────────────────────────────
-section "Kaniko"
-if kaniko version &>/dev/null; then pass "kaniko version"; else fail "kaniko version"; fi
-
 # ── Crane (registry operations) ────────────────────────────────────
 section "Crane"
 if crane version &>/dev/null; then pass "crane version"; else fail "crane version"; fi
@@ -57,6 +53,26 @@ if crane version &>/dev/null; then pass "crane version"; else fail "crane versio
 # ── Buildah (daemonless OCI builds) ────────────────────────────────
 section "Buildah"
 if buildah --version &>/dev/null; then pass "buildah version"; else fail "buildah version"; fi
+if BUILDAH_OUT="$(sudo buildah info 2>&1)"; then
+  pass "buildah info"
+else
+  fail "buildah info"
+  echo "$BUILDAH_OUT" | sed 's/^/    /'
+fi
+
+# Validate a minimal rootless lifecycle to catch missing runtime helpers/config.
+BUILDAH_CTR=""
+if BUILDAH_CTR="$(sudo buildah from scratch 2>/tmp/buildah.err)"; then
+  pass "buildah from scratch"
+  if sudo buildah rm "$BUILDAH_CTR" &>/dev/null; then
+    pass "buildah rm"
+  else
+    fail "buildah rm"
+  fi
+else
+  fail "buildah from scratch"
+  sed 's/^/    /' /tmp/buildah.err
+fi
 
 # ── Image processing libraries ──────────────────────────────────────
 section "Image processing libraries"

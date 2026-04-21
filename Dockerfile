@@ -1,4 +1,58 @@
 ARG PLAYWRIGHT_VERSION=1.59.1
+ARG BUILDAH_VERSION=1.39.4
+ARG BUILDAH_COMMIT=5b7b7ca328733fafa9b82810bf919c14cb924549
+
+# =============================================================================
+# Buildah stage: cross-compile buildah with CGO (avoids QEMU GC crashes)
+# =============================================================================
+# Pin to BUILDPLATFORM so Go compiles natively on the host CPU.
+# CGO cross-compilation uses the appropriate gcc cross-compiler and
+# target-arch C libraries so the resulting binary is dynamically linked
+# (required for chroot isolation's process management).
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS buildah-build
+
+ARG BUILDAH_VERSION
+ARG BUILDAH_COMMIT
+ARG TARGETARCH
+ARG BUILDARCH
+
+# Install native pkg-config, then target-arch C libraries + cross-compiler
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config && \
+    if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
+        apt-get install -y --no-install-recommends \
+            libgpgme-dev libseccomp-dev libdevmapper-dev libbtrfs-dev; \
+    elif [ "$TARGETARCH" = "amd64" ]; then \
+        dpkg --add-architecture amd64 && apt-get update && \
+        apt-get install -y --no-install-recommends \
+            gcc-x86-64-linux-gnu \
+            libgpgme-dev:amd64 libseccomp-dev:amd64 \
+            libdevmapper-dev:amd64 libbtrfs-dev:amd64; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        dpkg --add-architecture arm64 && apt-get update && \
+        apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu \
+            libgpgme-dev:arm64 libseccomp-dev:arm64 \
+            libdevmapper-dev:arm64 libbtrfs-dev:arm64; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git init /buildah && \
+    cd /buildah && \
+    git remote add origin https://github.com/containers/buildah.git && \
+    git fetch --depth 1 origin refs/tags/v${BUILDAH_VERSION}:refs/tags/v${BUILDAH_VERSION} && \
+    test "$(git rev-list -n 1 refs/tags/v${BUILDAH_VERSION})" = "${BUILDAH_COMMIT}" && \
+    git checkout --detach ${BUILDAH_COMMIT}
+
+WORKDIR /buildah
+RUN if [ "$TARGETARCH" != "$BUILDARCH" ] && [ "$TARGETARCH" = "amd64" ]; then \
+        export CC=x86_64-linux-gnu-gcc \
+               PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
+    elif [ "$TARGETARCH" != "$BUILDARCH" ] && [ "$TARGETARCH" = "arm64" ]; then \
+        export CC=aarch64-linux-gnu-gcc \
+               PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig; \
+    fi && \
+    CGO_ENABLED=1 GOOS=linux GOARCH=$TARGETARCH \
+    make buildah EXTRA_LDFLAGS="-s -w"
 
 # =============================================================================
 # Build stage: compile GitHub Actions runner and Docker tools
@@ -32,7 +86,8 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
-    && tar zxvf docker.tgz \
+    && mkdir -p /docker-bins \
+    && tar zxvf docker.tgz --strip-components=1 -C /docker-bins \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
@@ -184,9 +239,7 @@ RUN curl -fsSL https://bun.sh/install | bash && \
 
 # Copy Playwright browsers from playwright stage to system-wide location
 # This makes them available to all users (runner, zero, root)
-RUN mkdir -p /usr/local/share/ms-playwright
-COPY --from=playwright /tmp/pw-browsers /usr/local/share/ms-playwright
-RUN chmod -R 777 /usr/local/share/ms-playwright
+COPY --chmod=777 --from=playwright /tmp/pw-browsers /usr/local/share/ms-playwright
 
 # Install Playwright system dependencies
 # We temporarily install playwright just to run install-deps, then remove it
@@ -270,14 +323,7 @@ COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 USER root
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
-
-# Install Kaniko executor for daemonless Docker image builds
-COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/executor /usr/local/bin/kaniko
-COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-gcr /usr/local/bin/docker-credential-gcr
-COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-ecr-login /usr/local/bin/docker-credential-ecr-login
-COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/docker-credential-acr-env /usr/local/bin/docker-credential-acr-env
-COPY --from=gcr.io/kaniko-project/executor:latest /kaniko/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
+COPY --from=build /docker-bins/ /usr/bin/
 
 # Install crane for registry operations (inspect, copy, retag without a daemon)
 ARG CRANE_VERSION=0.21.5
@@ -297,18 +343,40 @@ RUN CRANE_ARCH="$(dpkg --print-architecture)" \
     && tar -xzf "${TMP_DIR}/${CRANE_TARBALL}" -C /usr/local/bin crane \
     && rm -rf "${TMP_DIR}"
 
-# Install Buildah for daemonless OCI image builds with full Dockerfile support
-# Include rootless helpers and subordinate ID mappings so the final `runner`
-# user can run `buildah bud` without requiring sudo/root.
+# Install buildah runtime dependencies and rootless helpers, then copy the
+# custom-built buildah binary. We skip the Debian buildah package (and its
+# containernetworking-plugins dep) since we only need the shared libraries.
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        buildah \
+        libgpgme11 \
+        libseccomp2 \
+        libdevmapper1.02.1 \
+        libbtrfs0 \
         uidmap \
-        slirp4netns \
         fuse-overlayfs && \
-    grep -q '^runner:' /etc/subuid || echo 'runner:100000:65536' >> /etc/subuid && \
-    grep -q '^runner:' /etc/subgid || echo 'runner:100000:65536' >> /etc/subgid && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=buildah-build /buildah/bin/buildah /usr/local/bin/buildah
+
+# Dummy netavark stub — buildah 1.39+ probes for it but we don't need
+# container networking for image builds.
+RUN mkdir -p /usr/libexec/podman && \
+    printf '#!/bin/sh\nexit 0\n' > /usr/libexec/podman/netavark && \
+    chmod +x /usr/libexec/podman/netavark
+
+# Configure buildah defaults for rootless operation with VFS storage.
+# Workflows can override by writing their own storage.conf.
+# Also set up root's storage.conf so sudo buildah uses VFS too.
+RUN mkdir -p /home/runner/.config/containers /home/runner/.local/share/containers \
+             /etc/containers && \
+    printf '[storage]\ndriver = "vfs"\ngraphroot = "/home/runner/.local/share/containers/storage"\nrunroot = "/home/runner/.local/run/containers"\n' \
+      > /home/runner/.config/containers/storage.conf && \
+    printf '[storage]\ndriver = "vfs"\ngraphroot = "/var/lib/containers/storage"\nrunroot = "/run/containers/storage"\n' \
+      > /etc/containers/storage.conf && \
+    echo '{"default":[{"type":"insecureAcceptAnything"}]}' \
+      > /home/runner/.config/containers/policy.json && \
+    cp /home/runner/.config/containers/policy.json /etc/containers/policy.json && \
+    chown -R runner:runner /home/runner/.config/containers /home/runner/.local/share/containers
 
 # Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
 # This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
