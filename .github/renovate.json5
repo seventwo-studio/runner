@@ -1,0 +1,6 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Inherit the org-wide Renovate preset. Add per-repo overrides below
+  // only if this repo needs to deviate from the shared defaults.
+  extends: ["local>seventwo-studio/.github"],
+}
