@@ -21,7 +21,7 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: test -f Dockerfile
       - run: test -f version.txt
 
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: lucasilverentand/free-disk-space@44e06ae212258d5c39e5b5602256acd39a2bf002 # v1.0.0
         with:
           tool-cache: false
           android: true
@@ -43,10 +43,10 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       # Fork PRs run with a read-only GITHUB_TOKEN, so they can't push to
       # GHCR or comment on the PR. Detect that up front and branch behavior.
@@ -64,7 +64,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: steps.fork.outputs.is_fork == 'false'
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -82,7 +82,7 @@ jobs:
 
       - name: Build and push image (same-repo PR)
         if: steps.fork.outputs.is_fork == 'false'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           push: true
@@ -94,7 +94,7 @@ jobs:
 
       - name: Build image to tar (fork PR)
         if: steps.fork.outputs.is_fork == 'true'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           push: false
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload image artifact (fork PR)
         if: steps.fork.outputs.is_fork == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pr-image
           path: /tmp/pr-image.tar
@@ -116,7 +116,7 @@ jobs:
 
       - name: Comment image reference on PR
         if: steps.fork.outputs.is_fork == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const tag = '${{ steps.tag.outputs.tag }}';
@@ -170,11 +170,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Login to GitHub Container Registry
         if: needs.build.outputs.is_fork == 'false'
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -188,7 +188,7 @@ jobs:
 
       - name: Download PR image artifact (fork PR)
         if: needs.build.outputs.is_fork == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: pr-image
           path: /tmp
@@ -214,11 +214,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Login to GitHub Container Registry
         if: needs.build.outputs.is_fork == 'false'
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -232,7 +232,7 @@ jobs:
 
       - name: Download PR image artifact (fork PR)
         if: needs.build.outputs.is_fork == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: pr-image
           path: /tmp
