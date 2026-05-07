@@ -11,8 +11,8 @@
   "dependencies": {
     "expo": "~55.0.0",
     "expo-router": "~55.0.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
     "react-native": "0.76.6",
     "react-native-web": "~0.19.13",
     "@expo/metro-runtime": "~55.0.0",
