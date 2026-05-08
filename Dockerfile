@@ -9,7 +9,7 @@ ARG BUILDAH_COMMIT=5b7b7ca328733fafa9b82810bf919c14cb924549
 # CGO cross-compilation uses the appropriate gcc cross-compiler and
 # target-arch C libraries so the resulting binary is dynamically linked
 # (required for chroot isolation's process management).
-FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS buildah-build
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm@sha256:47ce5636e9936b2c5cbf708925578ef386b4f8872aec74a67bd13a627d242b19 AS buildah-build
 
 ARG BUILDAH_VERSION
 ARG BUILDAH_COMMIT
