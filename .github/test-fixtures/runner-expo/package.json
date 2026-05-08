@@ -11,9 +11,9 @@
   "dependencies": {
     "expo": "55.0.23",
     "expo-router": "55.0.14",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "react-native": "0.85.2",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-native": "0.85.3",
     "react-native-web": "0.21.2",
     "@expo/metro-runtime": "55.0.11",
     "react-native-safe-area-context": "5.7.0",
