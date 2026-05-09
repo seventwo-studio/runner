@@ -33,15 +33,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Free disk space
-        uses: lucasilverentand/free-disk-space@44e06ae212258d5c39e5b5602256acd39a2bf002 # v1.0.0
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          timeout 300 sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          docker system prune --all --force || true
+          df -h
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.11.0](https://github.com/seventwo-studio/runner/compare/runner-v1.10.0...runner-v1.11.0) (2026-05-08)
+
+
+### Features
+
+* enhance Buildah support for cross-compilation and rootless operation ([#20](https://github.com/seventwo-studio/runner/issues/20)) ([dc44f63](https://github.com/seventwo-studio/runner/commit/dc44f63e5e9c1bc9aa324cce37d7f534bb0568bf))
+
+
+### Bug Fixes
+
+* **deps:** pin dependencies ([#31](https://github.com/seventwo-studio/runner/issues/31)) ([c2a46f1](https://github.com/seventwo-studio/runner/commit/c2a46f1c8bea9217f5c92d061cb98db80ddec20e))
+* **deps:** update expo (major) ([#36](https://github.com/seventwo-studio/runner/issues/36)) ([d1ac0e5](https://github.com/seventwo-studio/runner/commit/d1ac0e5c9b90a7ac74ef7174ab0cf0f288ee43e9))
+* **deps:** update minor and patch ([#40](https://github.com/seventwo-studio/runner/issues/40)) ([f6190c4](https://github.com/seventwo-studio/runner/commit/f6190c413fe58215c72bbe965a6726724151fcaa))
+
 ## [1.10.0](https://github.com/seventwo-studio/runner/compare/runner-v1.9.0...runner-v1.10.0) (2026-04-17)
 
 
