@@ -57,7 +57,7 @@ RUN if [ "$TARGETARCH" != "$BUILDARCH" ] && [ "$TARGETARCH" = "amd64" ]; then \
 # =============================================================================
 # Build stage: compile GitHub Actions runner and Docker tools
 # =============================================================================
-FROM buildpack-deps:bookworm@sha256:0886a3e054a2d723ef02f7b1ae551e61a0391d4630c98d38d4be37fbae724e8c AS build
+FROM buildpack-deps:bookworm@sha256:a9aa5e5f526f48f28e1b3b5c4e16064eceafde0a59959d81ca4ec9982ad15963 AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -100,7 +100,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
 # =============================================================================
 # Playwright stage: pre-install browsers for fast E2E test startup
 # =============================================================================
-FROM buildpack-deps:bookworm@sha256:0886a3e054a2d723ef02f7b1ae551e61a0391d4630c98d38d4be37fbae724e8c AS playwright
+FROM buildpack-deps:bookworm@sha256:a9aa5e5f526f48f28e1b3b5c4e16064eceafde0a59959d81ca4ec9982ad15963 AS playwright
 
 ARG PLAYWRIGHT_VERSION
 ARG NODE_VERSION=20
@@ -135,7 +135,7 @@ RUN bash -c 'eval "$(mise activate bash)" && \
 # =============================================================================
 # Main stage: self-contained runner image
 # =============================================================================
-FROM buildpack-deps:bookworm@sha256:0886a3e054a2d723ef02f7b1ae551e61a0391d4630c98d38d4be37fbae724e8c AS main
+FROM buildpack-deps:bookworm@sha256:a9aa5e5f526f48f28e1b3b5c4e16064eceafde0a59959d81ca4ec9982ad15963 AS main
 
 ARG USERNAME=zero
 
