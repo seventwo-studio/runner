@@ -50,6 +50,19 @@ jobs:
         id: version
         run: echo "version=$(cat version.txt | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve latest runner version
+        id: runner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(gh release view --repo actions/runner --json tagName -q '.tagName' | cut -c2-)"
+          if [[ ! $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected runner version: $version" >&2
+            exit 1
+          fi
+          echo "Latest actions/runner: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Generate image metadata
         id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
@@ -66,6 +79,8 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            RUNNER_VERSION=${{ steps.runner.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: |
@@ -96,7 +111,13 @@ jobs:
 
       - name: Run toolchain tests
         run: |
+          # buildah needs user-namespace + chroot privileges (see CLAUDE.md);
+          # without these `buildah info` fails on unshare(CLONE_NEWUSER).
           docker run --rm \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --cap-add SYS_ADMIN \
+            --cap-add SYS_CHROOT \
             -v ${{ github.workspace }}/.github/test-fixtures/toolchain:/workspace \
             -w /workspace \
             ghcr.io/seventwo-studio/runner:latest \
