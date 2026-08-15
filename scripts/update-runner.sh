@@ -18,7 +18,7 @@ else
     fi
 
     # Fetch the latest runner version from GitHub releases
-    latest_version=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name' | cut -c 2-)
+    latest_version=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name' | sed 's/^v//')
 fi
 
 # Validate the version format (should be semantic version like 2.314.1)
