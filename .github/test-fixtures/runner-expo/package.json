@@ -4,8 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "web": "expo start --web",
+    "start": "expo start --port 49085",
+    "web": "expo start --web --port 49085",
     "export": "expo export --platform web"
   },
   "dependencies": {
