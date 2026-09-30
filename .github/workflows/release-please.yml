@@ -4,22 +4,15 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  packages: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release-please:
-    name: Release Please
-    runs-on: ubuntu-latest
-    steps:
-      - name: Release Please
-        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
-        with:
-          # Use a fine-grained PAT (contents:write, pull_requests:write) so
-          # release-please's PRs trigger CI. Workflows started by GITHUB_TOKEN
-          # cannot trigger further workflow runs, which would otherwise leave
-          # release PRs without status checks and blocked by branch rules.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+    uses: seventwo-studio/.github/.github/workflows/release-please.yml@94665c6663d78c16a3b174e3513bb4a2ff06c4e8
+    with:
+      client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+    secrets:
+      private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
