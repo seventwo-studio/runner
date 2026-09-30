@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/seventwo-studio/runner/compare/runner-v1.11.0...runner-v1.11.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **ci:** grant buildah privileges in tests and unpin stale runner version ([#49](https://github.com/seventwo-studio/runner/issues/49)) ([1b57297](https://github.com/seventwo-studio/runner/commit/1b5729738674df42cb82d0be5ad3ebcd6bc5692b))
+
 ## [1.11.0](https://github.com/seventwo-studio/runner/compare/runner-v1.10.0...runner-v1.11.0) (2026-05-08)
 
 
