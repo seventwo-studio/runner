@@ -65,12 +65,16 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
 ARG DOCKER_VERSION=29.3.0
 ARG BUILDX_VERSION=0.32.1
 ARG COMPOSE_VERSION=5.1.0
+# Resolved by CI to the latest actions/runner release. Leave empty to look the
+# version up during the build — but note that an empty value keeps this layer
+# cacheable, so cached builds would keep shipping a stale runner.
+ARG RUNNER_VERSION=""
 
 WORKDIR /actions-runner
 
-# Fetch the latest runner version
+# Pin the runner version (or fetch the latest when RUNNER_VERSION is empty)
 COPY scripts/update-runner.sh /actions-runner/update-runner.sh
-RUN chmod +x /actions-runner/update-runner.sh && /actions-runner/update-runner.sh
+RUN chmod +x /actions-runner/update-runner.sh && /actions-runner/update-runner.sh "${RUNNER_VERSION}"
 
 RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export RUNNER_ARCH=x64 ; fi \
