@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release-please:
-    uses: seventwo-studio/.github/.github/workflows/release-please.yml@94665c6663d78c16a3b174e3513bb4a2ff06c4e8
+    uses: seventwo-studio/.github/.github/workflows/release-please.yml@016be42e4f7cb1e1e74a81d91d42917956645929
     with:
       client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
     secrets:

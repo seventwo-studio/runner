@@ -1,6 +1,6 @@
 # Release automation
 
-The **Release Please** workflow calls SevenTwo's [shared signed release workflow](https://github.com/seventwo-studio/.github/blob/94665c6663d78c16a3b174e3513bb4a2ff06c4e8/docs/signed-releases.md). Keep that workflow name: Docker publishing listens for its successful completion.
+The **Release Please** workflow calls SevenTwo's [shared signed release workflow](https://github.com/seventwo-studio/.github/blob/016be42e4f7cb1e1e74a81d91d42917956645929/docs/signed-releases.md). Keep that workflow name: Docker publishing listens for its successful completion.
 
 Before adopting the caller, install **SevenTwo Releases** on this repository and configure:
 
