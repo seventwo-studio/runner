@@ -1,0 +1,12 @@
+# Managed by seventwo-studio/.github; validation stays in the shared workflow.
+name: PR message policy
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  pr-message:
+    name: PR message policy
+    uses: seventwo-studio/.github/.github/workflows/pr-message.yml@main
