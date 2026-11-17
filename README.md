@@ -777,3 +777,11 @@ docker stats runner-container
 - Playwright browsers (Chromium, Firefox, WebKit, Edge) are pre-installed for fast test startup
 - Use `--ipc=host` flag when running Chromium-based tests to avoid memory issues
 - Node.js 20 LTS is included for Playwright and other JavaScript tooling
+### Stock GitHub cache and artifact endpoints
+
+Select the `stock` Docker target, or the `stock-<version>` image tag, for ARC
+pools that use GitHub's cache and artifact services. This target retains the
+upstream Worker assembly without binary rewriting at build or startup time.
+The existing default target and tags keep the custom-cache behavior for current
+consumers. Homelab promotion selects an immutable stock image digest after a
+real cache/artifact workflow passes; a published image alone is not acceptance.

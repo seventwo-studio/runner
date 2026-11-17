@@ -382,11 +382,6 @@ RUN mkdir -p /home/runner/.config/containers /home/runner/.local/share/container
     cp /home/runner/.config/containers/policy.json /etc/containers/policy.json && \
     chown -R runner:runner /home/runner/.config/containers /home/runner/.local/share/containers
 
-# Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
-# This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
-# allowing us to set CUSTOM_ACTIONS_RESULTS_URL environment variable
-RUN sed -i 's/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x55\x00\x52\x00\x4C\x00/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x4F\x00\x52\x00\x4C\x00/g' /home/runner/bin/Runner.Worker.dll
-
 # Create an entrypoint that sets arch-dependent env vars and initializes sandbox
 RUN echo '#!/bin/bash' > /usr/local/bin/runner-entrypoint && \
     echo '# Set architecture-dependent env vars' >> /usr/local/bin/runner-entrypoint && \
@@ -410,6 +405,16 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 
 USER runner
 
-# Clean final stage (inherits from main)
+# Stock GitHub cache/artifact behavior for ARC consumers.
+FROM main AS stock
+ENTRYPOINT ["/usr/local/bin/runner-entrypoint"]
+
+# Keep the existing default target for custom-cache consumers. Homelab builds
+# select stock explicitly; existing image tags retain their previous behavior.
 FROM main AS final
+# Apply binary patch to allow custom ACTIONS_RESULTS_URL for cache server
+# This patches Runner.Worker.dll to change ACTIONS_RESULTS_URL to ACTIONS_RESULTS_ORL
+# allowing us to set CUSTOM_ACTIONS_RESULTS_URL environment variable
+RUN sed -i 's/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x55\x00\x52\x00\x4C\x00/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x4F\x00\x52\x00\x4C\x00/g' /home/runner/bin/Runner.Worker.dll
+
 ENTRYPOINT ["/usr/local/bin/runner-entrypoint"]

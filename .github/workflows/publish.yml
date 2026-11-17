@@ -88,6 +88,19 @@ jobs:
             type=registry,ref=ghcr.io/seventwo-studio/runner:latest
           cache-to: type=registry,ref=ghcr.io/seventwo-studio/runner:buildcache,mode=max
 
+      - name: Publish stock GitHub endpoint variant
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
+        with:
+          context: .
+          target: stock
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: RUNNER_VERSION=${{ steps.runner.outputs.version }}
+          tags: |
+            ghcr.io/seventwo-studio/runner:stock
+            ghcr.io/seventwo-studio/runner:stock-${{ steps.version.outputs.version }}
+          cache-from: type=registry,ref=ghcr.io/seventwo-studio/runner:buildcache
+
   test:
     name: Test Docker Image
     runs-on: ubuntu-latest
